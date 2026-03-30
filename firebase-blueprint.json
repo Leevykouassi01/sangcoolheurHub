@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "Job": {
+      "title": "Job",
+      "description": "A job posting in the community hub.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Job title" },
+        "company": { "type": "string", "description": "Company name" },
+        "location": { "type": "string", "description": "Job location" },
+        "salary": { "type": "string", "description": "Salary range or description" },
+        "type": { "type": "string", "enum": ["CDI", "CDD", "Freelance", "Stage", "Alternance"] },
+        "description": { "type": "string", "description": "Full job description" },
+        "requirements": { "type": "array", "items": { "type": "string" } },
+        "postedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "url": { "type": "string", "format": "uri" },
+        "isExpired": { "type": "boolean" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "authorUid": { "type": "string", "description": "UID of the recruiter" }
+      },
+      "required": ["title", "company", "location", "type", "description", "postedAt", "authorUid"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "A talent profile in the community directory.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "experience": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "company": { "type": "string" },
+              "role": { "type": "string" },
+              "period": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "education": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "school": { "type": "string" },
+              "degree": { "type": "string" },
+              "year": { "type": "string" }
+            }
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isPublic": { "type": "boolean" },
+        "completenessScore": { "type": "number" },
+        "suggestions": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["userId", "fullName", "title", "summary", "skills", "isPublic"]
+    }
+  },
+  "firestore": {
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Collection of job postings."
+    },
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Collection of talent profiles."
+    }
+  }
+}

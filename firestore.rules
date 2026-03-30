@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: jobs
+    // Fields:
+    //   - title: string (required)
+    //   - company: string (required)
+    //   - location: string (required)
+    //   - salary: string (optional)
+    //   - type: string (required, enum: CDI, CDD, Freelance, Stage, Alternance)
+    //   - description: string (required)
+    //   - requirements: list (required)
+    //   - postedAt: timestamp (required)
+    //   - expiresAt: timestamp (optional)
+    //   - url: string (optional)
+    //   - isExpired: bool (required)
+    //   - tags: list (required)
+    //   - authorUid: string (required, immutable)
+    //
+    // Collection: profiles
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - fullName: string (required)
+    //   - title: string (required)
+    //   - summary: string (required)
+    //   - skills: list (required)
+    //   - experience: list (required)
+    //   - education: list (required)
+    //   - tags: list (required)
+    //   - isPublic: bool (required)
+    //   - completenessScore: number (required)
+    //   - suggestions: list (required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorUid;
+    }
+
+    function isValidJob(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.company is string && data.company.size() > 0 && data.company.size() < 100 &&
+             data.location is string && data.location.size() > 0 && data.location.size() < 100 &&
+             data.type in ['CDI', 'CDD', 'Freelance', 'Stage', 'Alternance', 'Consultance'] &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 10000 &&
+             data.requirements is list && data.requirements.size() <= 50 &&
+             data.tags is list && data.tags.size() <= 20 &&
+             data.isExpired is bool &&
+             data.authorUid == request.auth.uid;
+    }
+
+    function isValidProfile(data) {
+      return data.userId == request.auth.uid &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.summary is string && data.summary.size() > 0 && data.summary.size() < 2000 &&
+             data.skills is list && data.skills.size() <= 50 &&
+             data.tags is list && data.tags.size() <= 20 &&
+             data.isPublic is bool &&
+             data.completenessScore is number && data.completenessScore >= 0 && data.completenessScore <= 100;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "leevykouassi@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isWhitelisted() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/whitelist_numbers/$(request.auth.token.phone_number));
+    }
+
+    // Rules for Jobs
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidJob(request.resource.data);
+      allow update: if isDocOwner() && isValidJob(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    // Rules for Profiles
+    match /profiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidProfile(request.resource.data);
+      allow update: if isOwner(resource.data.userId) && isValidProfile(request.resource.data);
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // Rules for Business Opportunities
+    match /business_opportunities/{oppId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isDocOwner() || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    // Rules for Contract Guarantees
+    match /contract_guarantees/{guaranteeId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.submitterUid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Rules for Training Offers
+    match /training_offers/{offerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isDocOwner() || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    // Rules for Recap Links
+    match /recap_links/{linkId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Rules for Whitelist Numbers (Security Gate)
+    match /whitelist_numbers/{numberId} {
+      // Allow read for authenticated users to check their own status
+      allow read: if isAuthenticated();
+      // Allow update of specific fields during security check
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['authorizedDeviceId', 'lastLogin', 'lastIp']) &&
+         (resource.data.authorizedDeviceId == null || resource.data.authorizedDeviceId == request.resource.data.authorizedDeviceId))
+      );
+      // Only admins can create or delete
+      allow create, delete: if isAdmin();
+    }
+
+    // Rules for Settings
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

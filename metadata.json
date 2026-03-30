@@ -1,0 +1,8 @@
+{
+  "name": "Sangcoolheur - Hub Emploi Communautaire",
+  "description": "Plateforme intelligente de recrutement et de valorisation des talents pour la communauté Sangcoolheur.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
